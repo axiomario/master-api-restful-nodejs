@@ -3,11 +3,40 @@ const bcrypt = require('bcrypt');
 const jwt = require('../services/jwt');
 const fs = require('fs');
 const path = require('path');
+const validator = require('validator');
+
+const validateUserData = (data) => {
+    const { name, lastname, email, password } = data;
+    let errors = [];
+
+    if (validator.isEmpty(name)) {
+        errors.push('Name is required');
+    }
+    if (validator.isEmpty(lastname)) {
+        errors.push('Lastname is required');
+    }
+    if (!validator.isEmail(email)) {
+        errors.push('Invalid email format');
+    }
+    if (!validator.isLength(password, { min: 6 })) {
+        errors.push('Password must be at least 6 characters long');
+    }
+    return {
+        isValid: errors.length === 0,
+        errors
+    };
+};
 
 const register = async (req, res) => {
     try {
         const { name, lastname, email, password } = req.body;
         const passwordHash = bcrypt.hashSync(password, 10);
+
+        const validation = validateUserData(req.body);
+        if (!validation.isValid) {
+            return res.status(400).json({ errors: validation.errors });
+        }
+
         const newUser = new User({ name, lastname, email, password: passwordHash });
         
         await newUser.save();
